@@ -1,2 +1,2 @@
 # SaveBrancher
-Graphical utility for having tree-based management of save game files.
+Graphical utility for a tree-based management of save game files.
