@@ -126,7 +126,6 @@ class AppWindow(Gtk.ApplicationWindow):
         self.add_accel_group(self.save_accelgroup)
         self.menuitem_save.add_accelerator("activate", self.save_accelgroup, ord("S"), Gdk.ModifierType.CONTROL_MASK, Gtk.AccelFlags.VISIBLE)
 
-
         self.flag_dragging = False
         self.grabbed_diff = [0, 0]  # Space between the position of a grabbed box and the cursor.
         self.grabbed_object = None
@@ -172,7 +171,6 @@ class AppWindow(Gtk.ApplicationWindow):
         self.nodemenu.append(self.nm_writesave)
         self.nm_writesave.connect('button-press-event', self.cb_writesave)
         self.nm_writesave.show()
-
 
         # CSS styling and settings >
         settings = Gtk.Settings.get_default()
@@ -230,11 +228,10 @@ class AppWindow(Gtk.ApplicationWindow):
         self.dialog_error.connect("response", self.cb_error_response)
         self.dialog_error.connect("delete-event", self.cb_delete_event)
 
-        #self.GObj = GObject.idle_add(Listener().run)
-
     # Open file selection for a new save source.
     def cb_newsource_show(self, widget):
         self.file_newsource.show()
+
     def cb_newsource_response(self, widget, response):
         if response == Gtk.ResponseType.OK:
             self.temp_source_filepath = self.file_newsource.get_filename()  # Get filepath of source save.
@@ -306,7 +303,6 @@ class AppWindow(Gtk.ApplicationWindow):
                 pass
 
             # Create savebrancher file. (Main object containing all nodes/positions, window size)
-
             savesbr = self.save_sbr()
 
             if not savesbr:
@@ -331,10 +327,10 @@ class AppWindow(Gtk.ApplicationWindow):
     # Open file selection for an exiting tree file.
     def cb_opentree_show(self, widget):
         self.file_opentree.show()
+
     def cb_opentree_response(self, widget, response):
         global main
         if response == Gtk.ResponseType.OK:
-
             openfn = self.file_opentree.get_filename()
             if openfn.split('.')[-1] == 'sbr':
                 sbrfile = open(openfn)
@@ -379,7 +375,6 @@ class AppWindow(Gtk.ApplicationWindow):
         widget.get_child().set_can_focus(False)
 
     def cb_writesave(self, widget, data):
-
         fileprefix = main.source_filename.split('.')[0] + '.' + str(self.target_node.obj_id)
         nodefilepath = os.path.join(main.tree_dirpath, fileprefix)
         shutil.copy2(nodefilepath, main.source_filepath)
@@ -529,7 +524,6 @@ class AppWindow(Gtk.ApplicationWindow):
         # WIP: Should have a warning dialog before deletion.
         if len(self.selected_nodes) > 0:
             for node in self.selected_nodes:
-
                 # Remove subedge reference for each node connected to this node.
                 for superedge in node.super_edges:
                     for subedge in superedge.super_node.sub_edges:
@@ -709,8 +703,6 @@ class AppWindow(Gtk.ApplicationWindow):
             self.mod_shift = False
 
     def cb_windowresize(self, widget):
-        # Testing getting and setting main window size.
-        #self.set_size_request(self.get_size()[0], self.get_size()[1])
         pass
 
     def cb_draw(self, widget, cr):
@@ -719,9 +711,7 @@ class AppWindow(Gtk.ApplicationWindow):
         h = allocation.height
         main.drawarea_size = [w, h]
 
-        #cr.set_source_rgba(0.2, 0.2, .4, 1.0)
         cr.set_source_rgba(0.1, 0.15, 0.3, 1.0)
-
         cr.rectangle(0, 0, main.drawarea_size[0] + main.drawarea_extra[0], main.drawarea_size[1] + main.drawarea_extra[1])
         cr.fill()
 
@@ -801,8 +791,6 @@ class AppWindow(Gtk.ApplicationWindow):
 
         for node in main.obj_list:
             # Draw boxes
-
-
             cr.set_line_width(2)
             cr.set_line_cap(cairo.LINE_CAP_ROUND)
 
@@ -827,10 +815,8 @@ class AppWindow(Gtk.ApplicationWindow):
                 cr.rectangle(node.x+1, node.y+1, node.ext_width-2, node.ext_height-2)
                 cr.stroke()
                 cr.fill()
-
             cr.set_source_rgba(0.3, 0.3, .6, 1.0)
             cr.rectangle(node.x + 2, node.y + 2, node.ext_width - 4, node.ext_height - 4)
-
             cr.fill()
 
             # Draw text.
@@ -838,6 +824,7 @@ class AppWindow(Gtk.ApplicationWindow):
             cr.move_to((node.x + node.ext_width / 2) - node.text_width / 2 - node.text_x,
                        (node.y + node.ext_height / 2) - node.text_height / 2 - node.text_y)
             cr.show_text(node.text)
+
 
 def on_activate(app):
     # Show the application window
