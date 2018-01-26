@@ -3,8 +3,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import Gio
-from gi.repository import GObject
-import cairo, math, random, os, cPickle, shutil
+import cairo, math, os, cPickle, shutil
 
 
 class Main(object):
@@ -23,7 +22,6 @@ class Main(object):
         self.window_size = [800, 600]
 
         self.source_filepath = None  # This will be None while an sbr file is not accessed and source is not known.
-        # !:  Could probably handle that a bit more elegantly.
 
     def new_obj_id(self):  # New object IDs.
         self.next_obj_id += 1
@@ -96,7 +94,7 @@ class Node(object):
 class AppWindow(Gtk.ApplicationWindow):
     def __init__(self):
         Gtk.Window.__init__(self)
-        self.gladefile = "savebrancher4c.glade"
+        self.gladefile = "savebrancher.glade"
         self.builder = Gtk.Builder()                # Used to build gui objects from our glade file.
         self.builder.add_from_file(self.gladefile)  #
         self.builder.connect_signals(self)          # Connect the signals to our callbacks in this object.
@@ -180,7 +178,7 @@ class AppWindow(Gtk.ApplicationWindow):
         settings = Gtk.Settings.get_default()
         settings.props.gtk_button_images = True
         style_provider = Gtk.CssProvider()
-        css = open('savebrancher4c.css', 'rb')
+        css = open('savebrancher.css', 'rb')
         css_data = css.read()
         css.close()
         style_provider.load_from_data(css_data)
@@ -660,14 +658,10 @@ class AppWindow(Gtk.ApplicationWindow):
             nx = 0
         if ny < 0:
             ny = 0
-
         if nx + n.ext_width >= main.drawarea_size[0] + main.drawarea_extra[0]:
             nx = main.drawarea_size[0] - n.ext_width
         if ny + n.ext_height >= main.drawarea_size[1] + main.drawarea_extra[1]:
             ny = main.drawarea_size[1] - n.ext_height
-
-
-
         n.x = nx
         n.y = ny
 
