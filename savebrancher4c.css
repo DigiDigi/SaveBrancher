@@ -1,0 +1,16 @@
+GtkTextView {
+
+  background-color: rgb(128,128,204); 
+  color: white; }
+
+GtkTextView.view {
+
+  background-color: rgb(20, 20, 80);
+
+}
+
+GtkTextView.view:selected {
+
+  background-color: blue;
+
+}
