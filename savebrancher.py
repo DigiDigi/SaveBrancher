@@ -262,10 +262,14 @@ class AppWindow(Gtk.ApplicationWindow):
             sbr_file = open(main.tree_filepath, 'w+')
             cPickle.dump(main, sbr_file)
             sbr_file.close()
+            self.set_title("SaveBrancher")
             return True
         except:
             # WIP: Could add error dialog here.
             return False
+    def unsaved_changes(self):
+        self.set_title("SaveBrancher(*)")
+        self.menuitem_save.set_sensitive(True)
 
     def cb_warncreate_response(self, widget, response):
         global main
@@ -353,9 +357,9 @@ class AppWindow(Gtk.ApplicationWindow):
             self.file_opentree.hide()
 
     # Save node positions. Everything else is saved on action. ?: Seems a bit clunky though.
-    # WIP: Add indicator on menu to indicate something is unsaved.
-    def cb_savepositions(self, widget):
+    def cb_menusave(self, widget):
         self.save_sbr()
+        self.menuitem_save.set_sensitive(False)
 
     def cb_quit(self, widget):
         # WIP: Do dialog if positions haven't been saved.
@@ -515,9 +519,11 @@ class AppWindow(Gtk.ApplicationWindow):
                 main.drawarea_extra[1] += 4
                 self.drawarea.set_size_request(main.drawarea_size[0] + main.drawarea_extra[0],
                                                main.drawarea_size[1] + main.drawarea_extra[1])
-
             self.grabbed_object.x = new_posx
             self.grabbed_object.y = new_posy
+
+            self.unsaved_changes()
+
             self.redraw()
 
     def cb_removenodes(self, widget):
@@ -767,7 +773,6 @@ class AppWindow(Gtk.ApplicationWindow):
                 cr.stroke()
                 cr.fill()
 
-                # WIP: Could either have the arrows in the exposed middle of the line, or connecting on the edges.
                 # Draw arrows between nodes.
                 line_angle = math.atan2(arrow_endy - endy, arrow_endx - endx) + math.pi
                 p1_x = arrow_endx + arrow_length * math.cos(line_angle - arrow_degrees)
