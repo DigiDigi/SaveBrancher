@@ -3,5 +3,5 @@ Graphical utility for a tree-based management of save game files.
 
 ## WIP: Needs a future-proofed metadata save format.
 
-Here's an example with Romancing Saga 3 savestates:
-![Screenshot](/screenshots/rm3example.png?raw=true "A potentially tedious Romancing Saga 3 Archival LP")
+Here's an example with Romancing SaGa 3 savestates:
+![Screenshot](/screenshots/rm3example.png?raw=true "A potentially tedious Romancing SaGa 3 Archival LP")
