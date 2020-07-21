@@ -1,10 +1,13 @@
+#!/bin/env python3
+
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import Gio
-import cairo, math, os, cPickle, shutil
-
+import cairo, math, os, shutil
+from time import sleep
+import pickle
 
 class Main(object):
     def __init__(self):
@@ -19,7 +22,7 @@ class Main(object):
 
         self.drawarea_size = []
         self.drawarea_extra = [0, 0]  # Extra amount of drawarea that is scrollable.
-        self.window_size = [800, 600]
+        self.window_size = [1280, 720]
 
         self.source_filepath = None  # This will be None while an sbr file is not accessed and source is not known.
 
@@ -94,12 +97,25 @@ class Node(object):
 class AppWindow(Gtk.ApplicationWindow):
     def __init__(self):
         Gtk.Window.__init__(self)
+        self.set_icon_from_file('savebrancher.png')
         self.gladefile = "savebrancher.glade"
         self.builder = Gtk.Builder()                # Used to build gui objects from our glade file.
         self.builder.add_from_file(self.gladefile)  #
         self.builder.connect_signals(self)          # Connect the signals to our callbacks in this object.
         self.mainbox = self.builder.get_object("mainbox")
         self.mainbox.reparent(self)  # Glade has a separate parent window widget for previewing.
+
+        self.onloadbuffer = Gtk.TextBuffer()
+        f = open('onloadscript.py', 'r')
+        scriptlines = f.readlines()
+        f.close()
+        scriptlines = "".join(scriptlines)
+        self.onloadbuffer.set_text(scriptlines)
+
+        self.bars_hidden = False
+
+        self.menubar1 = self.builder.get_object("menubar1")
+        self.box1 = self.builder.get_object("box1")
 
         self.connect('check-resize', self.cb_windowresize)
 
@@ -219,6 +235,13 @@ class AppWindow(Gtk.ApplicationWindow):
         self.file_opentree.connect("response", self.cb_opentree_response)
         self.file_opentree.connect("delete-event", self.cb_delete_event)
 
+        self.dialog_onload = self.builder.get_object("dialog_onload")
+        self.dialog_onload.connect("delete-event", self.cb_delete_event)
+        self.button_onload_cancel = self.builder.get_object("button_onload_cancel")
+        self.button_onload_confirm = self.builder.get_object("button_onload_confirm")
+        self.textview_onload = self.builder.get_object("textview_onload")
+        self.textview_onload.set_buffer(self.onloadbuffer)
+
         self.dialog_warncreate = Gtk.MessageDialog(None, 0, Gtk.MessageType.INFO, (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                                                                                    Gtk.STOCK_OK, Gtk.ResponseType.OK), "Create savetree from:")
         self.dialog_warncreate.connect("response", self.cb_warncreate_response)
@@ -259,8 +282,8 @@ class AppWindow(Gtk.ApplicationWindow):
         # Save current window size for later restoration.
         main.window_size = self.get_size()[:]
         try:
-            sbr_file = open(main.tree_filepath, 'w+')
-            cPickle.dump(main, sbr_file)
+            sbr_file = open(main.tree_filepath, 'wb')
+            pickle.dump(main, sbr_file)
             sbr_file.close()
             self.set_title("SaveBrancher")
             return True
@@ -278,10 +301,16 @@ class AppWindow(Gtk.ApplicationWindow):
             main = Main()
             main.source_filepath = self.temp_source_filepath[:]
             main.source_filename = os.path.split(main.source_filepath)[-1]  # Get filename.
-            main.tree_filename = main.source_filename.split('.')[0] + '.sbr'
+            #main.tree_filename = main.source_filename.split('.')[0] + '.sbr'
+            main.tree_filename = main.source_filename + '.sbr'
             treepath = os.path.split(main.source_filepath)[:-1][0]
-            main.tree_dirpath = os.path.join(treepath, main.source_filename.split('.')[0])
+            #main.tree_dirpath = os.path.join(treepath, main.source_filename.split('.')[0])
+            main.tree_dirpath = os.path.join(treepath, main.source_filename) + ' SBR'
             main.tree_filepath = os.path.join(main.tree_dirpath, main.tree_filename)
+
+            print (treepath, main.source_filename)
+            print (main.tree_filepath)
+            print (main.tree_dirpath)
 
             # Create savebrancher sub-directory for this source file.
             self.directory_exists = False
@@ -337,15 +366,12 @@ class AppWindow(Gtk.ApplicationWindow):
         if response == Gtk.ResponseType.OK:
             openfn = self.file_opentree.get_filename()
             if openfn.split('.')[-1] == 'sbr':
-                sbrfile = open(openfn)
-                main = cPickle.load(sbrfile)
+                with open(openfn, 'rb') as sbrfile:
+                    main = pickle.load(sbrfile, encoding='latin1')
 
                 self.resize(main.window_size[0], main.window_size[1])
                 self.drawarea.set_size_request(main.drawarea_size[0] + main.drawarea_extra[0],
                                                main.drawarea_size[1] + main.drawarea_extra[1])
-
-
-                sbrfile.close()
                 self.redraw()
                 self.statusbar1.push(self.context_id4, main.source_filepath)
 
@@ -379,9 +405,14 @@ class AppWindow(Gtk.ApplicationWindow):
         widget.get_child().set_can_focus(False)
 
     def cb_writesave(self, widget, data):
-        fileprefix = main.source_filename.split('.')[0] + '.' + str(self.target_node.obj_id)
+        fileprefix = main.source_filename + '.' + str(self.selected_node.obj_id)
         nodefilepath = os.path.join(main.tree_dirpath, fileprefix)
         shutil.copy2(nodefilepath, main.source_filepath)
+        print (nodefilepath, main.source_filepath)
+        #execfile('onloadscript.py') #py2
+        with open("onloadscript.py") as f:
+            code = compile(f.read(), "onloadscript.py", 'exec')
+            exec(code)
 
     def cb_linksave(self, widget, data):
         for node in self.selected_nodes:
@@ -420,6 +451,24 @@ class AppWindow(Gtk.ApplicationWindow):
         if self.target_node:
             self.dialog_rename.show()
 
+    def cb_onload(self, widget):
+        # load the script.
+        f = open('onloadscript.py', 'r')
+        scriptlines = f.readlines()
+        f.close()
+        scriptlines = "".join(scriptlines)
+        self.onloadbuffer.set_text(scriptlines)
+        self.dialog_onload.show()
+
+    def cb_onload_canceled(self, widget):
+        self.dialog_onload.hide()
+
+    def cb_onload_confirmed(self, widget):
+        f = open('onloadscript.py', 'w')
+        f.writelines(self.onloadbuffer.get_text(self.onloadbuffer.get_start_iter(), self.onloadbuffer.get_end_iter(), True))
+        f.close()
+        self.dialog_onload.hide()
+
     def cb_focus(self, widget, data):
         pass
 
@@ -449,13 +498,17 @@ class AppWindow(Gtk.ApplicationWindow):
                                 sindex = self.selected_nodes.index(node)
                                 self.selected_nodes.pop(sindex)
                             self.selected_nodes.append(node)
+                            self.selected_node = node
                         else:
                             self.selected_nodes = [node]
+                            self.selected_node = node
+                        
 
                         self.flag_dragging = True
                         self.grabbed_object = node
                         self.grabbed_diff = [event.x - node.x, event.y - node.y]
                     elif event.button == Gdk.BUTTON_SECONDARY:
+                        self.selected_node = node
 
                         self.target_node = node
                         self.nodemenu.popup(None, None, None, None, event.button, event.time)
@@ -549,7 +602,8 @@ class AppWindow(Gtk.ApplicationWindow):
                 node.super_edges = None
                 node.sub_edges = None
 
-                nodefn = main.tree_filename.split('.')[0] + '.' + str(node.obj_id)
+                #nodefn = main.tree_filename.split('.')[0] + '.' + str(node.obj_id)
+                nodefn = main.tree_filename[:-4] + '.' + str(node.obj_id)
                 nodefp = os.path.join(main.tree_dirpath, nodefn)
                 os.remove(nodefp)
 
@@ -591,7 +645,8 @@ class AppWindow(Gtk.ApplicationWindow):
 
         # Copy source savefile to a node savefile.
         # WIP: Add error checking.
-        fileprefix = main.source_filename.split('.')[0] + '.' + str(main.next_obj_id + 1)
+        #fileprefix = main.source_filename.split('.')[0] + '.' + str(main.next_obj_id + 1)
+        fileprefix = main.source_filename + '.' + str(main.next_obj_id + 1)
         savedest = os.path.join(main.tree_dirpath, fileprefix)
         shutil.copy2(main.source_filepath, savedest)
 
@@ -644,7 +699,8 @@ class AppWindow(Gtk.ApplicationWindow):
 
         # Copy source savefile to a node savefile.
         # WIP: Add error checking.
-        fileprefix = main.source_filename.split('.')[0] + '.' + str(main.next_obj_id + 1)
+        #fileprefix = main.source_filename.split('.')[0] + '.' + str(main.next_obj_id + 1)
+        fileprefix = main.source_filename + '.' + str(main.next_obj_id + 1)
         savedest = os.path.join(main.tree_dirpath, fileprefix)
         shutil.copy2(main.source_filepath, savedest)
 
@@ -684,7 +740,7 @@ class AppWindow(Gtk.ApplicationWindow):
             self.dialog_newsave.hide()
 
     def cb_keypress(self, widget, event, data=None):
-        # WIP: Key auto-repeat is manageable if a flag is set on each pressed, reset on on released.
+        # WIP: Key auto-repeat is manageable if a flag is set on each pressed, reset on released.
         #if event.keyval == Gdk.KEY_Escape:
         #    self.destroy()  # WIP: Add quit dialog.
         if event.keyval == Gdk.KEY_Delete:
@@ -697,6 +753,15 @@ class AppWindow(Gtk.ApplicationWindow):
             self.mod_shift = True
         if event.keyval == Gdk.KEY_Shift_R:
             self.mod_shift = True
+        if event.keyval == Gdk.KEY_h:
+            if self.bars_hidden == True:
+                self.menubar1.show()
+                self.box1.show()
+                self.bars_hidden = False
+            elif self.bars_hidden == False:
+                self.menubar1.hide()
+                self.box1.hide()
+                self.bars_hidden = True
 
     def cb_keyrelease(self, widget, event, data=None):
         if event.keyval == Gdk.KEY_Control_L:
@@ -717,14 +782,16 @@ class AppWindow(Gtk.ApplicationWindow):
         h = allocation.height
         main.drawarea_size = [w, h]
 
-        cr.set_source_rgba(0.1, 0.15, 0.3, 1.0)
+        #cr.set_source_rgba(0.1, 0.15, 0.3, 1.0)
+        cr.set_source_rgba(0, 0, 0, 1.0)
         cr.rectangle(0, 0, main.drawarea_size[0] + main.drawarea_extra[0], main.drawarea_size[1] + main.drawarea_extra[1])
         cr.fill()
 
         # Text size/alignment.
         for node in main.obj_list:
-            cr.set_font_size(16)
-            cr.select_font_face("Bitstream Vera Sans")
+            cr.set_font_size(32)
+            #cr.select_font_face("Bitstream Vera Sans")
+            cr.select_font_face("m5x7")
             node.text_x, node.text_y, node.text_width, node.text_height, dx, dy = cr.text_extents(node.text)
             node.ext_width = node.text_width
             node.ext_height = node.text_height
@@ -761,7 +828,8 @@ class AppWindow(Gtk.ApplicationWindow):
 
                 # Draw lines between nodes.
                 cr.set_line_cap(0)
-                cr.set_source_rgba(0.5, 0.5, .8, 1.0)
+                #cr.set_source_rgba(0.5, 0.5, .8, 1.0)
+                cr.set_source_rgba(0.098039215, 0.4, 1, 1.0)
                 cr.move_to(startx, starty)
                 cr.set_line_width(4)
 
@@ -783,7 +851,8 @@ class AppWindow(Gtk.ApplicationWindow):
                 cr.set_dash([])
                 cr.set_line_width(3)
                 #cr.set_source_rgba(1, 1, 1, 1.0)
-                cr.set_source_rgba(0.5, 0.5, .8, 1.0)
+                #cr.set_source_rgba(0.5, 0.5, .8, 1.0)
+                cr.set_source_rgba(0.098039215, 0.4, 1, 1.0)
                 cr.move_to(p1_x, p1_y)
                 cr.line_to(arrow_endx, arrow_endy)
                 cr.line_to(p2_x, p2_y)
@@ -796,7 +865,7 @@ class AppWindow(Gtk.ApplicationWindow):
 
         for node in main.obj_list:
             # Draw boxes
-            cr.set_line_width(2)
+            cr.set_line_width(4)
             cr.set_line_cap(cairo.LINE_CAP_ROUND)
 
             if node.module_calling is True:
@@ -816,16 +885,17 @@ class AppWindow(Gtk.ApplicationWindow):
                 cr.stroke()
                 cr.fill()
             else:
-                cr.set_source_rgba(0.5, 0.5, .8, 1.0)
+                #cr.set_source_rgba(0.5, 0.5, .8, 1.0)
+                cr.set_source_rgba(0.098039215, 0.4, 1, 1.0)
                 cr.rectangle(node.x+1, node.y+1, node.ext_width-2, node.ext_height-2)
                 cr.stroke()
                 cr.fill()
-            cr.set_source_rgba(0.3, 0.3, .6, 1.0)
+            cr.set_source_rgba(0, 0, 0, 1.0)
             cr.rectangle(node.x + 2, node.y + 2, node.ext_width - 4, node.ext_height - 4)
             cr.fill()
 
             # Draw text.
-            cr.set_source_rgba(.9, .9, .9, 1.0)
+            cr.set_source_rgba(1, 1, 1, 1.0)
             cr.move_to((node.x + node.ext_width / 2) - node.text_width / 2 - node.text_x,
                        (node.y + node.ext_height / 2) - node.text_height / 2 - node.text_y)
             cr.show_text(node.text)
@@ -836,7 +906,7 @@ def on_activate(app):
     win = AppWindow()
     win.props.application = app
     win.set_title("SaveBrancher")
-    win.set_default_size(600, 500)
+    win.set_default_size(1280, 720)
     win.connect('key-press-event', win.cb_keypress)
     win.connect('key-release-event', win.cb_keyrelease)
     win.connect('focus-in-event', win.cb_focus_in)
