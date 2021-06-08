@@ -605,12 +605,14 @@ class AppWindow(Gtk.ApplicationWindow):
                 node = Objects.nodes[node_id]
                 for sub_node in node.sub_node_ids:
                     sub_node.super_node_id = None
+                if node.super_node_id in Objects.nodes:
+                    super_node = Objects.nodes[node.super_node_id]
+                    super_node.sub_node_ids.pop(super_node.sub_node_ids.index(node_id))
                 node.sub_node_ids = []
                 nodefn = main.tree_filename[:-4] + '.' + str(node_id)
                 nodefp = os.path.join(main.tree_dirpath, nodefn)
                 os.remove(nodefp)
                 main.remove_object(node)
-
             self.selected_node_ids = []
             self.grabbed_node_id = None
             self.target_node_id = None
