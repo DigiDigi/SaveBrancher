@@ -603,8 +603,8 @@ class AppWindow(Gtk.ApplicationWindow):
         if len(self.selected_node_ids) > 0:
             for node_id in self.selected_node_ids:
                 node = Objects.nodes[node_id]
-                for sub_node in node.sub_node_ids:
-                    sub_node.super_node_id = None
+                for sub_node_id in node.sub_node_ids:
+                    Objects.nodes[sub_node_id].super_node_id = None
                 if node.super_node_id in Objects.nodes:
                     super_node = Objects.nodes[node.super_node_id]
                     super_node.sub_node_ids.pop(super_node.sub_node_ids.index(node_id))
