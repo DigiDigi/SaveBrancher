@@ -620,7 +620,7 @@ class AppWindow(Gtk.ApplicationWindow):
             self.redraw()
 
     def cb_rename_confirmed(self, widget):
-        self.target_node_id.text = self.entry_rename.get_text()
+        Objects.nodes[self.target_node_id].text = self.entry_rename.get_text()
         self.entry_rename.set_text("")
         self.dialog_rename.hide()
         self.save_sbr()
